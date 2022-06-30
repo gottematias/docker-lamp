@@ -1,0 +1,62 @@
+version: "3"
+
+volumes:
+    db_data: {}
+
+networks:
+    gotte-net:
+        external: true
+    lamp_backend:
+        ipam:
+            config:
+                - subnet: 172.100.0.0/24
+
+services:
+    db:
+        image: mysql:8.0
+        container_name: lamp_mysql
+        restart: unless-stopped
+        ports: 
+            - "3306:3306"
+        command: --default-authentication-plugin=mysql_native_password
+        environment:
+            MYSQL_DATABASE: dbname
+            MYSQL_USER: test
+            MYSQL_PASSWORD: test
+            MYSQL_ROOT_PASSWORD: test 
+        volumes:
+            - db_data:/var/lib/mysql
+            - ./dump:/docker-entrypoint-initdb.d
+            - ./conf:/etc/mysql/conf.d
+        networks:
+            lamp_backend: {}
+    
+    www:
+        build: .
+        container_name: lamp_apache_php
+        restart: unless-stopped
+        ports: 
+            - "80:80"
+        volumes:
+            - ./www:/var/www/html
+        links:
+            - db
+        networks:
+            gotte-net:
+                ipv4_address: 190.160.0.200
+            lamp_backend: {}
+    
+    phpmyadmin:
+        image: phpmyadmin/phpmyadmin:5
+        container_name: lamp_phpmyadmin
+        restart: unless-stopped
+        ports:
+            - 8080:80
+        environment:
+            PMA_HOST: db
+        depends_on:
+            - db
+        networks:
+            gotte-net:
+                ipv4_address: 190.160.0.201
+            lamp_backend: {}
